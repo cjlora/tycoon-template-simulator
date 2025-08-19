@@ -1,474 +1,639 @@
-<!DOCTYPE html>
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🐉🔥 Cedric's Dragon Chamber 🔥🐉</title>
-  <style>
-    body {
-      font-family: 'Roboto', Arial, sans-serif;
-      text-align: center;
-      padding: 20px;
-      margin: 0;
-      font-size: 20px;
-    }
-    h1 {
-      font-size: 42px;
-      font-weight: 700;
-      background: linear-gradient(45deg, #ff4500, #ffd700);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.3), 0 0 10px #ff4500;
-      animation: dazzle 2s infinite;
-      margin: 10px 0;
-    }
-    @keyframes dazzle {
-      0%,100% { transform: scale(1); }
-      50% { transform: scale(1.05); }
-    }
-    button {
-      padding: 12px 24px;
-      margin: 10px;
-      font-size: 18px;
-      cursor: pointer;
-      border: none;
-      border-radius: 5px;
-      background-color: #4CAF50;
-      color: white;
-      font-family: 'Roboto', Arial, sans-serif;
-    }
-    button:hover { background-color: #45a049; }
-    button:disabled { background-color: #cccccc; cursor: not-allowed; }
-    #output { margin-top: 20px; font-size: 20px; color: #333; }
-    .currency-area {
-      margin: 20px 0;
-      font-size: 22px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 10px;
-    }
-    .currency-area.fixed {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      background-color: #fff;
-      z-index: 1000;
-      padding: 10px 0;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .station-row {
-      margin: 20px 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 20px;
-    }
-    .station-box {
-      padding: 15px;
-      width: 90%;
-      max-width: 400px;
-      background-color: #f9f9f9;
-      border-radius: 10px;
-      border: 1px solid #ccc;
-      margin: 10px;
-    }
-    .station-box h2 {
-      margin: 0 0 10px 0;
-      font-size: 28px;
-      color: #333;
-      font-weight: 700;
-    }
-    .station-box p { margin: 5px 0; font-size: 20px; color: #555; }
-    .station-box .button-group { display: flex; justify-content: center; gap: 5px; }
-    .playtime-timer { margin: 10px 0; font-size: 22px; color: #333; }
-    .level-display {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 5px;
-      min-height: 30px;
-    }
-    .icon-emoji { font-size: 20px; animation: bounce 1s infinite; }
-    .icon-emoji.sliding { animation: slide 2s infinite; }
-    .checkmark { font-size: 30px; color: #4CAF50; margin-top: 10px; }
-    @keyframes bounce {
-      0%,100% { transform: translateY(0); }
-      50% { transform: translateY(-5px); }
-    }
-    @keyframes slide {
-      0% { transform: translateX(0); }
-      33% { transform: translateX(50px); }
-      66% { transform: translateX(-50px); }
-      100% { transform: translateX(50px); }
-    }
-    .container-padded { padding-top: 80px; }
-    .progress-bar {
-      width: 100%;
-      height: 10px;
-      background-color: #ddd;
-      border-radius: 5px;
-      margin-top: 10px;
-      overflow: hidden;
-    }
-    .progress-bar-fill {
-      height: 100%;
-      background-color: #4CAF50;
-      transition: width 0.1s linear;
-    }
-    .hidden { display: none; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐉🔥 Cedric's Dragon Chamber 🔥🐉</title>
+    <style>
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            margin: 0;
+            font-size: 20px;
+        }
+        h1 {
+            font-size: 42px;
+            font-weight: 700;
+            background: linear-gradient(45deg, #ff4500, #ffd700);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3), 0 0 10px #ff4500;
+            animation: dazzle 2s infinite;
+            margin: 10px 0;
+        }
+        @keyframes dazzle {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        button {
+            padding: 12px 24px;
+            margin: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+            font-family: 'Roboto', Arial, sans-serif;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #output {
+            margin-top: 20px;
+            font-size: 20px;
+            color: #333;
+        }
+        .currency-area {
+            margin: 20px 0;
+            font-size: 22px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+        .currency-area.fixed {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: #fff;
+            z-index: 1000;
+            padding: 10px 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .station-row {
+            margin: 20px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        .station-box {
+            padding: 15px;
+            width: 90%;
+            max-width: 400px;
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            border: 1px solid #ccc;
+            margin: 10px;
+        }
+        .station-box h2 {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+            color: #333;
+            font-weight: 700;
+        }
+        .station-box p {
+            margin: 5px 0;
+            font-size: 20px;
+            color: #555;
+        }
+        .station-box .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+        }
+        .playtime-timer {
+            margin: 10px 0;
+            font-size: 22px;
+            color: #333;
+        }
+        .level-display {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+            min-height: 30px;
+        }
+        .icon-emoji {
+            font-size: 20px;
+            animation: bounce 1s infinite;
+        }
+        .icon-emoji.sliding {
+            animation: slide 2s infinite;
+        }
+        .checkmark {
+            font-size: 30px;
+            color: #4CAF50;
+            margin-top: 10px;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        @keyframes slide {
+            0% { transform: translateX(0); }
+            33% { transform: translateX(50px); }
+            66% { transform: translateX(-50px); }
+            100% { transform: translateX(50px); }
+        }
+        .container-padded {
+            padding-top: 80px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background-color: #ddd;
+            border-radius: 5px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background-color: #4CAF50;
+            transition: width 0.1s linear;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h1>🐉🔥 Cedric's Dragon Chamber 🔥🐉</h1>
-    <div class="playtime-timer">
-      Playtime: <span id="playtime">0:00</span>
-    </div>
-    <div class="currency-area">
-      <p>Currency: <span id="currency">0</span></p>
-      <p>Uncollected: <span id="uncollected">0</span></p>
-      <button id="collect-all">Collect All</button>
-    </div>
-    <div id="floors"></div>
-    <div class="station-row">
-      <div class="station-box">
-        <button id="unlock-floor">+ Unlock Floor 2 Cost: <span id="next-cost">500</span></button>
-      </div>
-    </div>
-    <div id="output">Click a button to see the result!</div>
-  </div>
-
-  <script>
-    // --- STATE ---
-    let currency = 0;
-    let uncollected = 0;
-    let playtime = 0;
-    let unlockedFloors = 1;
-    let nextFloorCost = 500;
-
-    // Floor 1 exists at start
-    let floors = [
-      {
-        number: 1,
-        // Clicker scales with floor: income = level * floorNumber
-        clicker: { level: 1, income: 1 /* 1*1 */, clicks: 0, clicksRequired: 20, dragons: 1 },
-        dropper: { level: 0, income: 0, dragons: 0, upgradeCost: 50 },
-        pickup:  { level: 0, dragons: 0, cooldownEndTime: 0, buyCost: 50 }
-      }
-    ];
-
-    // --- UTIL ---
-    function formatTime(seconds) {
-      const mins = Math.floor(seconds / 60);
-      const secs = seconds % 60;
-      return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-    }
-
-    function updateDisplays() {
-      const currencyEl = document.getElementById('currency');
-      const uncollectedEl = document.getElementById('uncollected');
-      const playtimeEl = document.getElementById('playtime');
-      const nextCostEl = document.getElementById('next-cost');
-      const unlockFloorEl = document.getElementById('unlock-floor');
-
-      if (currencyEl) currencyEl.textContent = currency;
-      if (uncollectedEl) uncollectedEl.textContent = uncollected;
-      if (playtimeEl) playtimeEl.textContent = formatTime(playtime);
-      if (nextCostEl) nextCostEl.textContent = nextFloorCost;
-      if (unlockFloorEl) {
-        unlockFloorEl.innerHTML = `+ Unlock Floor ${unlockedFloors + 1} Cost: <span id="next-cost">${nextFloorCost}</span>`;
-      }
-    }
-
-    function renderFloors() {
-      const floorsContainer = document.getElementById('floors');
-      floorsContainer.innerHTML = '';
-
-      floors.forEach(floor => {
-        const floorDiv = document.createElement('div');
-        floorDiv.className = 'station-row';
-        floorDiv.innerHTML = `
-          <div class="station-box">
-            <h2>Floor ${floor.number}</h2>
-
+    <div class="container">
+        <h1>🐉🔥 Cedric's Dragon Chamber 🔥🐉</h1>
+        <div class="playtime-timer">
+            Playtime: <span id="playtime">0:00</span>
+        </div>
+        <div class="currency-area">
+            <p>Currency: <span id="currency">0</span></p>
+            <p>Uncollected: <span id="uncollected">0</span></p>
+            <button id="collect-all">Collect All</button>
+        </div>
+        <div id="floors"></div>
+        <div class="station-row">
             <div class="station-box">
-              <h3>Clicker ${floor.number}</h3>
-              <div class="level-display">
-                <p>Level: <span id="clicker-level-${floor.number}">${floor.clicker.level}</span></p>
-                <p id="clicker-dragons-${floor.number}" class="icon-emoji">${'🐉'.repeat(floor.clicker.dragons)}</p>
-              </div>
-              <p>Income: <span id="clicker-income-${floor.number}">${floor.clicker.income}</span></p>
-              <p>Clicks until next upgrade: <span id="clicker-clicks-${floor.number}">${floor.clicker.clicksRequired - floor.clicker.clicks}</span></p>
-              <div class="button-group">
-                <button id="clicker-collect-${floor.number}">Collect</button>
-              </div>
+                <button id="unlock-floor">+ Unlock Floor 2 Cost: <span id="next-cost">500</span></button>
             </div>
+        </div>
+        <div id="output">Click a button to see the result!</div>
+    </div>
+    <script>
+        let currency = 0;
+        let uncollected = 0;
+        let playtime = 0;
+        let unlockedFloors = 1;
+        let nextFloorCost = 500;
+        let maxFloors = 8;
+        let economyData = [];
+        let floors = [];
 
-            <div class="station-box">
-              <h3>Dropper ${floor.number}</h3>
-              <div class="level-display">
-                ${floor.dropper.level > 0
-                  ? `<p id="dropper-icons-${floor.number}" class="icon-emoji">${'🐉💻'.repeat(floor.dropper.level)}</p>`
-                  : '<p>Not Activated</p>'}
-              </div>
-              <p>Income: <span id="dropper-income-${floor.number}">${floor.dropper.income}</span>/s</p>
-              ${floor.dropper.level < 5 ? `<p>Upgrade Cost: <span id="dropper-upgrade-cost-${floor.number}">${floor.dropper.upgradeCost}</span></p>` : ''}
-              <div class="button-group">
-                ${floor.dropper.level < 5 ? `<button id="dropper-upgrade-${floor.number}">Upgrade</button>` : ''}
-                ${floor.dropper.level > 0 ? `<button disabled>Generating: <span id="dropper-generating-${floor.number}">${floor.dropper.income}</span>/s</button>` : ''}
-              </div>
-            </div>
+        // Load CSV data from Google Sheet
+        async function loadEconomyData() {
+            try {
+                const response = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vRYivaCMz0c1gZuYVUJwEF_YecH0z70lbepTs6Td7aq70svY6Hs_WsLTSYZPgHTP6tCplClm5UmLLb8/pub?output=csv');
+                const text = await response.text();
+                const rows = text.trim().split('\n').slice(1); // Skip header
+                economyData = rows.map(row => {
+                    const [type, floor, level, clicksRequired, income, upgradeCost, buyCost, reward, cooldown] = row.split(',').map(val => val.trim());
+                    return {
+                        type,
+                        floor: parseInt(floor) || 0,
+                        level: parseInt(level) || 0,
+                        clicksRequired: parseInt(clicksRequired) || 0,
+                        income: parseFloat(income) || 0,
+                        upgradeCost: parseFloat(upgradeCost) || 0,
+                        buyCost: parseFloat(buyCost) || 0,
+                        reward: parseFloat(reward) || 0,
+                        cooldown: parseFloat(cooldown) || 0
+                    };
+                });
 
-            <div class="station-box">
-              <h3>Pick Up ${floor.number}</h3>
-              <div class="level-display">
-                ${floor.pickup.level > 0
-                  ? `<p id="pickup-icons-${floor.number}" class="icon-emoji">${'🐉' + '📦'.repeat(floor.number)}</p>`
-                  : '<p>Not Activated</p>'}
-              </div>
-              ${floor.pickup.level > 0 ? `
-                <div id="pickup-progress-${floor.number}" class="progress-bar ${floor.pickup.cooldownEndTime <= Date.now() ? 'hidden' : ''}">
-                  <div id="pickup-progress-fill-${floor.number}" class="progress-bar-fill" style="width: 0%"></div>
-                </div>
-                <p id="pickup-checkmark-${floor.number}" class="checkmark ${floor.pickup.cooldownEndTime <= Date.now() ? '' : 'hidden'}">✅</p>
-              ` : ''}
-              <p>Reward: <span id="pickup-reward-${floor.number}">${floor.pickup.level > 0 ? 30 + 10 * floor.number : 0}</span></p>
-              <p>Cooldown: <span id="pickup-cooldown-${floor.number}">${Math.max(1, 30 - 2 * floor.number)}</span>s</p>
-              ${floor.pickup.level === 0 ? `<p>Buy Cost: ${floor.pickup.buyCost}</p>` : ''}
-              <div class="button-group">
-                ${floor.pickup.level === 0
-                  ? `<button id="pickup-buy-${floor.number}">Buy</button>`
-                  : `<button id="pickup-collect-${floor.number}">Collect</button>`}
-              </div>
-            </div>
-          </div>
-        `;
-        floorsContainer.appendChild(floorDiv);
-
-        // CLICKER EVENTS
-        const clickerButton = document.getElementById(`clicker-collect-${floor.number}`);
-        let clickerInterval, holdTimeout, isHolding = false, mouseDownTime = 0, lastTapTime = 0;
-
-        clickerButton.addEventListener('mousedown', () => {
-          mouseDownTime = Date.now();
-          holdTimeout = setTimeout(() => {
-            isHolding = true;
-            clickerInterval = setInterval(() => collectClicker(floor.number), 333); // 3/sec
-          }, 150);
-        });
-
-        clickerButton.addEventListener('mouseup', () => {
-          clearTimeout(holdTimeout);
-          if (isHolding) {
-            clearInterval(clickerInterval);
-            isHolding = false;
-          } else {
-            const pressDuration = Date.now() - mouseDownTime;
-            if (pressDuration < 150) {
-              const now = Date.now();
-              if (now - lastTapTime >= 333) {
-                collectClicker(floor.number);
-                lastTapTime = now;
-              }
+                // Initialize floors with CSV data
+                floors = [
+                    {
+                        number: 1,
+                        clicker: { level: 1, income: 1, clicks: 0, clicksRequired: getEconomyValue('Clicker', 0, 0, 'clicksRequired'), dragons: 1 },
+                        dropper: { level: 0, income: 0, dragons: 0, upgradeCost: getEconomyValue('Dropper', 1, 1, 'upgradeCost') },
+                        dropperV2: { level: 0, income: 0, dragons: 0, upgradeCost: getEconomyValue('DropperV2', 1, 1, 'upgradeCost') }
+                    }
+                ];
+                // Only include pickup if it exists in CSV
+                if (economyData.some(e => e.type === 'PickUp' && e.floor === 1)) {
+                    floors[0].pickup = { level: 0, dragons: 0, cooldownEndTime: 0, buyCost: getEconomyValue('PickUp', 1, 0, 'buyCost') };
+                }
+                nextFloorCost = getEconomyValue('Floor', 2, 0, 'buyCost');
+                renderFloors();
+            } catch (error) {
+                console.error('Failed to load CSV:', error);
+                document.getElementById('output').textContent = 'Error loading economy data. Using defaults.';
             }
-          }
-        });
-
-        clickerButton.addEventListener('mouseleave', () => {
-          clearTimeout(holdTimeout);
-          if (clickerInterval) clearInterval(clickerInterval);
-          isHolding = false;
-        });
-
-        // DROPPER EVENTS
-        if (floor.dropper.level < 5) {
-          const upgBtn = document.getElementById(`dropper-upgrade-${floor.number}`);
-          if (upgBtn) upgBtn.addEventListener('click', () => upgradeDropper(floor.number));
         }
 
-        // PICKUP EVENTS
-        if (floor.pickup.level === 0) {
-          const buyBtn = document.getElementById(`pickup-buy-${floor.number}`);
-          if (buyBtn) buyBtn.addEventListener('click', () => buyPickup(floor.number));
-        } else {
-          const collectBtn = document.getElementById(`pickup-collect-${floor.number}`);
-          if (collectBtn) collectBtn.addEventListener('click', () => collectPickup(floor.number));
+        function getEconomyValue(type, floor, level, property) {
+            const entry = type === 'Clicker' ? 
+                economyData.find(e => e.type === type) : 
+                economyData.find(e => e.type === type && e.floor === floor && e.level === level);
+            return entry ? entry[property] : getDefaultValue(type, floor, level, property);
         }
-      });
 
-      updateDisplays();
-    }
+        function getDefaultValue(type, floor, level, property) {
+            if (type === 'Clicker') {
+                return property === 'clicksRequired' ? 20 : property === 'income' ? level : 0;
+            } else if (type === 'Dropper' || type === 'DropperV2') {
+                return property === 'upgradeCost' ? 50 * level : property === 'reward' ? floor * level : 0;
+            } else if (type === 'PickUp') {
+                return property === 'buyCost' ? 50 * Math.pow(10, floor - 1) : property === 'reward' ? (level > 0 ? 30 + 10 * floor : 0) : property === 'cooldown' ? Math.max(1, 30 - 2 * floor) : 0;
+            } else if (type === 'Floor') {
+                return property === 'buyCost' ? 500 * Math.pow(5, floor - 2) : 0;
+            }
+            return 0;
+        }
 
-    // --- GAME LOGIC ---
-    function collectClicker(floorNum) {
-      const floor = floors.find(f => f.number === floorNum);
-      currency += floor.clicker.income;
-      floor.clicker.clicks++;
-      if (floor.clicker.clicks >= floor.clicker.clicksRequired) {
-        floor.clicker.level++;
-        floor.clicker.dragons++;
-        // Scale income with floor number
-        floor.clicker.income = floor.clicker.level * floor.number;
-        floor.clicker.clicks = 0;
-        floor.clicker.clicksRequired = 20;
-        updateFloorDisplays(floorNum);
-      }
-      updateDisplays();
-    }
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
 
-    function upgradeDropper(floorNum) {
-      const floor = floors.find(f => f.number === floorNum);
-      if (currency >= floor.dropper.upgradeCost && floor.dropper.level < 5) {
-        currency -= floor.dropper.upgradeCost;
-        floor.dropper.level++;
-        floor.dropper.income = floor.number * floor.dropper.level;
-        floor.dropper.dragons = floor.dropper.level;
-        floor.dropper.upgradeCost = 50 * floor.dropper.level;
-        renderFloors();
-      }
-    }
+        function updateDisplays() {
+            const currencyEl = document.getElementById('currency');
+            const uncollectedEl = document.getElementById('uncollected');
+            const playtimeEl = document.getElementById('playtime');
+            const nextCostEl = document.getElementById('next-cost');
+            const unlockFloorEl = document.getElementById('unlock-floor');
+            if (currencyEl) currencyEl.textContent = currency;
+            if (uncollectedEl) uncollectedEl.textContent = uncollected;
+            if (playtimeEl) playtimeEl.textContent = formatTime(playtime);
+            if (nextCostEl) nextCostEl.textContent = nextFloorCost;
+            if (unlockFloorEl) {
+                if (unlockedFloors >= maxFloors) {
+                    unlockFloorEl.textContent = 'Max Floors Reached';
+                    unlockFloorEl.disabled = true;
+                } else {
+                    unlockFloorEl.innerHTML = `+ Unlock Floor ${unlockedFloors + 1} Cost: <span id="next-cost">${nextFloorCost}</span>`;
+                    unlockFloorEl.disabled = false;
+                }
+            }
+        }
 
-    function buyPickup(floorNum) {
-      const floor = floors.find(f => f.number === floorNum);
-      if (currency >= floor.pickup.buyCost) {
-        currency -= floor.pickup.buyCost;
-        floor.pickup.level = 1;
-        floor.pickup.dragons = 1;
-        floor.pickup.cooldownEndTime = Date.now();
-        renderFloors();
-      }
-    }
+        function renderFloors() {
+            const floorsContainer = document.getElementById('floors');
+            floorsContainer.innerHTML = '';
+            floors.forEach(floor => {
+                const floorDiv = document.createElement('div');
+                floorDiv.className = 'station-row';
+                let floorHTML = `
+                    <div class="station-box">
+                        <h2>Floor ${floor.number}</h2>
+                `;
+                if (floor.number % 2 !== 0) {
+                    floorHTML += `
+                        <div class="station-box">
+                            <h3>Clicker ${floor.number}</h3>
+                            <div class="level-display">
+                                <p>Level: <span id="clicker-level-${floor.number}">${floor.clicker.level}</span></p>
+                                <p id="clicker-dragons-${floor.number}" class="icon-emoji">${'🐉'.repeat(floor.clicker.dragons)}</p>
+                            </div>
+                            <p>Income: <span id="clicker-income-${floor.number}">${floor.clicker.income * floor.number}</span></p>
+                            <p>Clicks until next upgrade: <span id="clicker-clicks-${floor.number}">${floor.clicker.clicksRequired - floor.clicker.clicks}</span></p>
+                            <div class="button-group">
+                                <button id="clicker-collect-${floor.number}">Collect</button>
+                            </div>
+                        </div>
+                    `;
+                }
+                floorHTML += `
+                        <div class="station-box">
+                            <h3>Dropper ${floor.number}</h3>
+                            <div class="level-display">
+                                ${floor.dropper.level > 0 ? `<p id="dropper-icons-${floor.number}" class="icon-emoji">${'🐉💻'.repeat(floor.dropper.level)}</p>` : '<p>Not Activated</p>'}
+                            </div>
+                            <p>Income: <span id="dropper-income-${floor.number}">${floor.dropper.income}</span>/s</p>
+                            ${floor.dropper.level < (floor.number === 1 ? 16 : 5) ? `<p>Upgrade Cost: <span id="dropper-upgrade-cost-${floor.number}">${floor.dropper.upgradeCost}</span></p>` : ''}
+                            <div class="button-group">
+                                ${floor.dropper.level < (floor.number === 1 ? 16 : 5) ? `<button id="dropper-upgrade-${floor.number}">Upgrade</button>` : ''}
+                                ${floor.dropper.level > 0 ? `<button disabled>Generating: <span id="dropper-generating-${floor.number}">${floor.dropper.income}</span>/s</button>` : ''}
+                            </div>
+                        </div>
+                        <div class="station-box">
+                            <h3>Dropper V2 ${floor.number}</h3>
+                            <div class="level-display">
+                                ${floor.dropperV2.level > 0 ? `<p id="dropperV2-icons-${floor.number}" class="icon-emoji">${'🐉💻'.repeat(floor.dropperV2.level)}</p>` : '<p>Not Activated</p>'}
+                            </div>
+                            <p>Income: <span id="dropperV2-income-${floor.number}">${floor.dropperV2.income}</span>/s</p>
+                            ${floor.dropperV2.level < (floor.number === 1 ? 24 : 8) ? `<p>Upgrade Cost: <span id="dropperV2-upgrade-cost-${floor.number}">${floor.dropperV2.upgradeCost}</span></p>` : ''}
+                            <div class="button-group">
+                                ${floor.dropperV2.level < (floor.number === 1 ? 24 : 8) ? `<button id="dropperV2-upgrade-${floor.number}">Upgrade</button>` : ''}
+                                ${floor.dropperV2.level > 0 ? `<button disabled>Generating: <span id="dropperV2-generating-${floor.number}">${floor.dropperV2.income}</span>/s</button>` : ''}
+                            </div>
+                        </div>
+                `;
+                // Only render Pick Up if it exists in CSV
+                if (floor.pickup) {
+                    floorHTML += `
+                        <div class="station-box">
+                            <h3>Pick Up ${floor.number}</h3>
+                            <div class="level-display">
+                                ${floor.pickup.level > 0 ? `<p id="pickup-icons-${floor.number}" class="icon-emoji">${'🐉' + '📦'.repeat(floor.number)}</p>` : '<p>Not Activated</p>'}
+                            </div>
+                            ${floor.pickup.level > 0 ? `
+                                <div id="pickup-progress-${floor.number}" class="progress-bar ${floor.pickup.cooldownEndTime <= Date.now() ? 'hidden' : ''}">
+                                    <div id="pickup-progress-fill-${floor.number}" class="progress-bar-fill" style="width: 0%"></div>
+                                </div>
+                                <p id="pickup-checkmark-${floor.number}" class="checkmark ${floor.pickup.cooldownEndTime <= Date.now() ? '' : 'hidden'}">✅</p>
+                            ` : ''}
+                            <p>Reward: <span id="pickup-reward-${floor.number}">${floor.pickup.level > 0 ? getEconomyValue('PickUp', floor.number, 1, 'reward') : 0}</span></p>
+                            <p>Cooldown: <span id="pickup-cooldown-${floor.number}">${Math.max(1, getEconomyValue('PickUp', floor.number, floor.pickup.level, 'cooldown'))}</span>s</p>
+                            ${floor.pickup.level === 0 ? `<p>Buy Cost: ${floor.pickup.buyCost}</p>` : ''}
+                            <div class="button-group">
+                                ${floor.pickup.level === 0 ? `<button id="pickup-buy-${floor.number}">Buy</button>` : `<button id="pickup-collect-${floor.number}">Collect</button>`}
+                            </div>
+                        </div>
+                    `;
+                }
+                floorHTML += `</div>`;
+                floorDiv.innerHTML = floorHTML;
+                floorsContainer.appendChild(floorDiv);
 
-    function collectPickup(floorNum) {
-      const floor = floors.find(f => f.number === floorNum);
-      const now = Date.now();
-      if (now >= floor.pickup.cooldownEndTime && floor.pickup.level > 0) {
-        const reward = 30 + 10 * floor.number;
-        currency += reward;
-        const cooldown = Math.max(1, 30 - 2 * floor.number);
-        floor.pickup.cooldownEndTime = now + cooldown * 1000;
-        renderFloors();
-      }
-    }
+                // Add event listeners
+                if (floor.number % 2 !== 0) {
+                    const clickerButton = document.getElementById(`clicker-collect-${floor.number}`);
+                    let clickerInterval;
+                    let holdTimeout;
+                    let isHolding = false;
+                    let mouseDownTime = 0;
+                    let lastTapTime = 0;
+                    clickerButton.addEventListener('mousedown', () => {
+                        mouseDownTime = Date.now();
+                        holdTimeout = setTimeout(() => {
+                            isHolding = true;
+                            clickerInterval = setInterval(() => collectClicker(floor.number), 333); // 3/sec
+                        }, 150); // hold threshold
+                    });
+                    clickerButton.addEventListener('mouseup', () => {
+                        clearTimeout(holdTimeout);
+                        if (isHolding) {
+                            clearInterval(clickerInterval);
+                            clickerInterval = null;
+                            isHolding = false;
+                        } else {
+                            const pressDuration = Date.now() - mouseDownTime;
+                            if (pressDuration < 150) {
+                                const now = Date.now();
+                                if (now - lastTapTime >= 333) {
+                                    collectClicker(floor.number);
+                                    lastTapTime = now;
+                                }
+                            }
+                        }
+                    });
+                    clickerButton.addEventListener('mouseleave', () => {
+                        clearTimeout(holdTimeout);
+                        if (clickerInterval) {
+                            clearInterval(clickerInterval);
+                            clickerInterval = null;
+                        }
+                        isHolding = false;
+                    });
+                }
+                if (floor.dropper.level < (floor.number === 1 ? 16 : 5)) {
+                    document.getElementById(`dropper-upgrade-${floor.number}`).addEventListener('click', () => upgradeDropper(floor.number));
+                }
+                if (floor.dropperV2.level < (floor.number === 1 ? 24 : 8)) {
+                    document.getElementById(`dropperV2-upgrade-${floor.number}`).addEventListener('click', () => upgradeDropperV2(floor.number));
+                }
+                if (floor.pickup && floor.pickup.level === 0) {
+                    document.getElementById(`pickup-buy-${floor.number}`).addEventListener('click', () => buyPickup(floor.number));
+                } else if (floor.pickup) {
+                    document.getElementById(`pickup-collect-${floor.number}`).addEventListener('click', () => collectPickup(floor.number));
+                }
+            });
+            updateDisplays();
+        }
 
-    function updateFloorDisplays(floorNum) {
-      const floor = floors.find(f => f.number === floorNum);
+        function collectClicker(floorNum) {
+            const floor = floors.find(f => f.number === floorNum);
+            currency += floor.clicker.income * floor.number; // Multiply income by floor number
+            floor.clicker.clicks++;
+            if (floor.clicker.clicks >= floor.clicker.clicksRequired) {
+                floor.clicker.level++;
+                floor.clicker.dragons++;
+                floor.clicker.income = floor.clicker.level; // Income = level
+                floor.clicker.clicks = 0;
+                updateFloorDisplays(floorNum);
+            }
+            updateDisplays();
+        }
 
-      const clickerLevel = document.getElementById(`clicker-level-${floorNum}`);
-      const clickerIncome = document.getElementById(`clicker-income-${floorNum}`);
-      const clickerClicks = document.getElementById(`clicker-clicks-${floorNum}`);
-      const dropperIncome = document.getElementById(`dropper-income-${floorNum}`);
-      const dropperGenerating = document.getElementById(`dropper-generating-${floorNum}`);
-      const dropperUpgradeCost = document.getElementById(`dropper-upgrade-cost-${floorNum}`);
-      const pickupReward = document.getElementById(`pickup-reward-${floorNum}`);
-      const pickupCooldown = document.getElementById(`pickup-cooldown-${floorNum}`);
+        function upgradeDropper(floorNum) {
+            const floor = floors.find(f => f.number === floorNum);
+            const maxLevel = floorNum === 1 ? 16 : 5;
+            const nextLevel = floor.dropper.level + 1;
+            const upgradeCost = getEconomyValue('Dropper', floorNum, nextLevel, 'upgradeCost');
+            if (currency >= upgradeCost && floor.dropper.level < maxLevel) {
+                currency -= upgradeCost;
+                floor.dropper.level++;
+                floor.dropper.income = getEconomyValue('Dropper', floorNum, floor.dropper.level, 'reward');
+                floor.dropper.dragons = floor.dropper.level;
+                floor.dropper.upgradeCost = getEconomyValue('Dropper', floorNum, floor.dropper.level + 1, 'upgradeCost') || 0;
+                renderFloors();
+            }
+        }
 
-      if (clickerLevel) clickerLevel.textContent = floor.clicker.level;
-      if (clickerIncome) clickerIncome.textContent = floor.clicker.income;
-      if (clickerClicks) clickerClicks.textContent = floor.clicker.clicksRequired - floor.clicker.clicks;
-      if (dropperIncome) dropperIncome.textContent = floor.dropper.income;
-      if (dropperGenerating) dropperGenerating.textContent = floor.dropper.income;
-      if (dropperUpgradeCost) dropperUpgradeCost.textContent = floor.dropper.upgradeCost;
-      if (pickupReward) pickupReward.textContent = floor.pickup.level > 0 ? 30 + 10 * floor.number : 0;
-      if (pickupCooldown) pickupCooldown.textContent = Math.max(1, 30 - 2 * floor.number);
+        function upgradeDropperV2(floorNum) {
+            const floor = floors.find(f => f.number === floorNum);
+            const maxLevel = floorNum === 1 ? 24 : 8;
+            const nextLevel = floor.dropperV2.level + 1;
+            const upgradeCost = getEconomyValue('DropperV2', floorNum, nextLevel, 'upgradeCost');
+            if (currency >= upgradeCost && floor.dropperV2.level < maxLevel) {
+                currency -= upgradeCost;
+                floor.dropperV2.level++;
+                floor.dropperV2.income = getEconomyValue('DropperV2', floorNum, floor.dropperV2.level, 'reward');
+                floor.dropperV2.dragons = floor.dropperV2.level;
+                floor.dropperV2.upgradeCost = getEconomyValue('DropperV2', floorNum, floor.dropperV2.level + 1, 'upgradeCost') || 0;
+                renderFloors();
+            }
+        }
 
-      const clickerDragons = document.getElementById(`clicker-dragons-${floorNum}`);
-      const dropperIcons  = document.getElementById(`dropper-icons-${floorNum}`);
-      const pickupIcons   = document.getElementById(`pickup-icons-${floorNum}`);
-      if (clickerDragons) clickerDragons.innerHTML = '🐉'.repeat(floor.clicker.dragons);
-      if (dropperIcons && floor.dropper.level > 0) dropperIcons.innerHTML = '🐉💻'.repeat(floor.dropper.level);
-      if (pickupIcons && floor.pickup.level > 0) pickupIcons.innerHTML = '🐉' + '📦'.repeat(floor.number);
+        function buyPickup(floorNum) {
+            const floor = floors.find(f => f.number === floorNum);
+            const buyCost = getEconomyValue('PickUp', floorNum, 0, 'buyCost');
+            if (currency >= buyCost) {
+                currency -= buyCost;
+                floor.pickup.level = 1;
+                floor.pickup.dragons = 1;
+                floor.pickup.cooldownEndTime = Date.now();
+                renderFloors();
+            }
+        }
 
-      const now = Date.now();
-      const remaining = Math.max(0, floor.pickup.cooldownEndTime - now);
-      const cooldownMs = Math.max(1, 30 - 2 * floor.number) * 1000;
-      const progress = floor.pickup.level > 0 ? (cooldownMs - remaining) / cooldownMs * 100 : 0;
+        function collectPickup(floorNum) {
+            const floor = floors.find(f => f.number === floorNum);
+            const now = Date.now();
+            if (now >= floor.pickup.cooldownEndTime && floor.pickup.level > 0) {
+                const reward = getEconomyValue('PickUp', floorNum, 1, 'reward');
+                currency += reward;
+                const cooldown = Math.max(1, getEconomyValue('PickUp', floorNum, 1, 'cooldown'));
+                floor.pickup.cooldownEndTime = now + cooldown * 1000;
+                renderFloors();
+            }
+        }
 
-      const pickupProgress = document.getElementById(`pickup-progress-${floorNum}`);
-      const pickupProgressFill = document.getElementById(`pickup-progress-fill-${floorNum}`);
-      const pickupCheckmark = document.getElementById(`pickup-checkmark-${floorNum}`);
-      if (pickupProgressFill) pickupProgressFill.style.width = `${progress}%`;
-      if (pickupProgress && pickupCheckmark) {
-        pickupProgress.classList.toggle('hidden', remaining === 0);
-        pickupCheckmark.classList.toggle('hidden', remaining !== 0);
-      }
-    }
+        function updateFloorDisplays(floorNum) {
+            const floor = floors.find(f => f.number === floorNum);
+            const clickerLevel = document.getElementById(`clicker-level-${floorNum}`);
+            const clickerIncome = document.getElementById(`clicker-income-${floorNum}`);
+            const clickerClicks = document.getElementById(`clicker-clicks-${floorNum}`);
+            const dropperIncome = document.getElementById(`dropper-income-${floorNum}`);
+            const dropperGenerating = document.getElementById(`dropper-generating-${floorNum}`);
+            const dropperUpgradeCost = document.getElementById(`dropper-upgrade-cost-${floorNum}`);
+            const dropperV2Income = document.getElementById(`dropperV2-income-${floorNum}`);
+            const dropperV2Generating = document.getElementById(`dropperV2-generating-${floorNum}`);
+            const dropperV2UpgradeCost = document.getElementById(`dropperV2-upgrade-cost-${floorNum}`);
+            const pickupReward = document.getElementById(`pickup-reward-${floorNum}`);
+            const pickupCooldown = document.getElementById(`pickup-cooldown-${floorNum}`);
 
-    // --- UI BUTTONS ---
-    document.getElementById('collect-all').addEventListener('click', () => {
-      currency += uncollected;
-      uncollected = 0;
-      updateDisplays();
-    });
+            if (clickerLevel) clickerLevel.textContent = floor.clicker.level;
+            if (clickerIncome) clickerIncome.textContent = floor.clicker.income * floor.number;
+            if (clickerClicks) clickerClicks.textContent = floor.clicker.clicksRequired - floor.clicker.clicks;
+            if (dropperIncome) dropperIncome.textContent = floor.dropper.income;
+            if (dropperGenerating) dropperGenerating.textContent = floor.dropper.income;
+            if (dropperUpgradeCost) dropperUpgradeCost.textContent = floor.dropper.upgradeCost;
+            if (dropperV2Income) dropperV2Income.textContent = floor.dropperV2.income;
+            if (dropperV2Generating) dropperV2Generating.textContent = floor.dropperV2.income;
+            if (dropperV2UpgradeCost) dropperV2UpgradeCost.textContent = floor.dropperV2.upgradeCost;
+            if (pickupReward) pickupReward.textContent = floor.pickup ? (floor.pickup.level > 0 ? getEconomyValue('PickUp', floorNum, 1, 'reward') : 0) : 0;
+            if (pickupCooldown) pickupCooldown.textContent = floor.pickup ? Math.max(1, getEconomyValue('PickUp', floorNum, floor.pickup.level, 'cooldown')) : 0;
 
-    document.getElementById('unlock-floor').addEventListener('click', () => {
-      if (currency >= nextFloorCost) {
-        currency -= nextFloorCost;
-        unlockedFloors++;
+            const clickerDragons = document.getElementById(`clicker-dragons-${floorNum}`);
+            const dropperIcons = document.getElementById(`dropper-icons-${floorNum}`);
+            const dropperV2Icons = document.getElementById(`dropperV2-icons-${floorNum}`);
+            const pickupIcons = document.getElementById(`pickup-icons-${floorNum}`);
+            if (clickerDragons) clickerDragons.innerHTML = '🐉'.repeat(floor.clicker.dragons);
+            if (dropperIcons && floor.dropper.level > 0) dropperIcons.innerHTML = '🐉💻'.repeat(floor.dropper.level);
+            if (dropperV2Icons && floor.dropperV2.level > 0) dropperV2Icons.innerHTML = '🐉💻'.repeat(floor.dropperV2.level);
+            if (pickupIcons && floor.pickup && floor.pickup.level > 0) pickupIcons.innerHTML = '🐉' + '📦'.repeat(floor.number);
 
-        floors.push({
-          number: unlockedFloors,
-          // New floor clicker starts stronger: income = level(=1) * floorNumber
-          clicker: { level: 1, income: unlockedFloors, clicks: 0, clicksRequired: 20, dragons: 1 },
-          dropper: { level: 0, income: 0, dragons: 0, upgradeCost: 50 },
-          pickup:  { level: 0, dragons: 0, cooldownEndTime: 0, buyCost: 50 * Math.pow(10, unlockedFloors - 1) }
+            if (floor.pickup) {
+                const now = Date.now();
+                const remaining = Math.max(0, floor.pickup.cooldownEndTime - now);
+                const cooldown = Math.max(1, getEconomyValue('PickUp', floorNum, floor.pickup.level, 'cooldown')) * 1000;
+                const progress = pickupIcons && floor.pickup.level > 0 ? (cooldown - remaining) / cooldown * 100 : 0;
+                const pickupProgress = document.getElementById(`pickup-progress-${floorNum}`);
+                const pickupProgressFill = document.getElementById(`pickup-progress-fill-${floorNum}`);
+                const pickupCheckmark = document.getElementById(`pickup-checkmark-${floorNum}`);
+                if (pickupProgressFill) pickupProgressFill.style.width = `${progress}%`;
+                if (pickupProgress && pickupCheckmark) {
+                    pickupProgress.classList.toggle('hidden', remaining === 0);
+                    pickupCheckmark.classList.toggle('hidden', remaining !== 0);
+                }
+            }
+        }
+
+        document.getElementById('collect-all').addEventListener('click', () => {
+            currency += uncollected;
+            uncollected = 0;
+            updateDisplays();
         });
 
-        nextFloorCost *= 5;
-        renderFloors();
-      }
-    });
+        document.getElementById('unlock-floor').addEventListener('click', () => {
+            if (currency >= nextFloorCost && unlockedFloors < maxFloors) {
+                currency -= nextFloorCost;
+                unlockedFloors++;
+                const newFloor = {
+                    number: unlockedFloors,
+                    dropper: { level: 0, income: 0, dragons: 0, upgradeCost: getEconomyValue('Dropper', unlockedFloors, 1, 'upgradeCost') },
+                    dropperV2: { level: 0, income: 0, dragons: 0, upgradeCost: getEconomyValue('DropperV2', unlockedFloors, 1, 'upgradeCost') }
+                };
+                if (unlockedFloors % 2 !== 0) {
+                    newFloor.clicker = { level: 1, income: 1, clicks: 0, clicksRequired: getEconomyValue('Clicker', 0, 0, 'clicksRequired'), dragons: 1 };
+                }
+                if (economyData.some(e => e.type === 'PickUp' && e.floor === unlockedFloors)) {
+                    newFloor.pickup = { level: 0, dragons: 0, cooldownEndTime: 0, buyCost: getEconomyValue('PickUp', unlockedFloors, 0, 'buyCost') };
+                }
+                floors.push(newFloor);
+                nextFloorCost = getEconomyValue('Floor', unlockedFloors + 1, 0, 'buyCost') || 500 * Math.pow(5, unlockedFloors - 1);
+                renderFloors();
+            }
+        });
 
-    // --- GAME LOOP ---
-    setInterval(() => {
-      playtime++;
-      const now = Date.now();
+        setInterval(() => {
+            playtime++;
+            const now = Date.now();
+            floors.forEach(floor => {
+                uncollected += floor.dropper.income + floor.dropperV2.income;
+                if (floor.pickup) {
+                    const pickupButton = document.getElementById(`pickup-collect-${floor.number}`);
+                    const pickupIcons = document.getElementById(`pickup-icons-${floor.number}`);
+                    if (pickupButton && pickupIcons) {
+                        const remaining = Math.max(0, Math.ceil((floor.pickup.cooldownEndTime - now) / 1000));
+                        pickupButton.disabled = remaining > 0;
+                        pickupButton.textContent = remaining > 0 ? `Collect (in ${remaining}s)` : 'Collect';
+                        if (remaining > 0 && floor.pickup.level > 0) {
+                            pickupIcons.classList.add('sliding');
+                        } else {
+                            pickupIcons.classList.remove('sliding');
+                        }
+                    }
+                }
+                updateFloorDisplays(floor.number);
+            });
+            updateDisplays();
+        }, 1000);
 
-      floors.forEach(floor => {
-        // passive income from droppers goes into "uncollected"
-        uncollected += floor.dropper.income;
+        // Scroll-based fixed header
+        const currencyArea = document.querySelector('.currency-area');
+        const container = document.querySelector('.container');
+        const currencyAreaOffset = currencyArea.offsetTop;
 
-        // Pickup button + animation status
-        const pickupButton = document.getElementById(`pickup-collect-${floor.number}`);
-        const pickupIcons  = document.getElementById(`pickup-icons-${floor.number}`);
-        if (pickupButton && pickupIcons) {
-          const remaining = Math.max(0, Math.ceil((floor.pickup.cooldownEndTime - now) / 1000));
-          pickupButton.disabled = remaining > 0;
-          pickupButton.textContent = remaining > 0 ? `Collect (in ${remaining}s)` : 'Collect';
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > currencyAreaOffset) {
+                currencyArea.classList.add('fixed');
+                container.classList.add('container-padded');
+            } else {
+                currencyArea.classList.remove('fixed');
+                container.classList.remove('container-padded');
+            }
+        });
 
-          if (remaining > 0 && floor.pickup.level > 0) {
-            pickupIcons.classList.add('sliding');
-          } else {
-            pickupIcons.classList.remove('sliding');
-          }
-        }
-
-        updateFloorDisplays(floor.number);
-      });
-
-      updateDisplays();
-    }, 1000);
-
-    // --- STICKY HEADER ON SCROLL ---
-    const currencyArea = document.querySelector('.currency-area');
-    const container = document.querySelector('.container');
-    const currencyAreaOffset = currencyArea.offsetTop;
-
-    window.addEventListener('scroll', () => {
-      if (window.scrollY > currencyAreaOffset) {
-        currencyArea.classList.add('fixed');
-        container.classList.add('container-padded');
-      } else {
-        currencyArea.classList.remove('fixed');
-        container.classList.remove('container-padded');
-      }
-    });
-
-    // Initial render
-    renderFloors();
-  </script>
+        // Load economy data and render
+        loadEconomyData();
+    </script>
 </body>
 </html>
