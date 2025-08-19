@@ -302,24 +302,54 @@
                 `;
                 floorsContainer.appendChild(floorDiv);
 
-                // Add event listenerslet clickerInterval;
                 const clickerButton = document.getElementById(`clicker-collect-${floor.number}`);
+                let clickerInterval;
+                let holdTimeout;
+                let isHolding = false;
+                let mouseDownTime = 0;
+                let lastTapTime = 0; // NEW
 
                 clickerButton.addEventListener('mousedown', () => {
-                    if (!clickerInterval) {
-                        clickerInterval = setInterval(() => collectClicker(floor.number), 333); // 3x per second
-                    }
+                    mouseDownTime = Date.now();
+                    holdTimeout = setTimeout(() => {
+                        isHolding = true;
+                        clickerInterval = setInterval(() => collectClicker(floor.number), 333); // 3/sec
+                    }, 150); // hold threshold
                 });
 
                 clickerButton.addEventListener('mouseup', () => {
-                    clearInterval(clickerInterval);
-                    clickerInterval = null;
+                    clearTimeout(holdTimeout);
+
+                    if (isHolding) {
+                        // Stop auto-fire
+                        clearInterval(clickerInterval);
+                        clickerInterval = null;
+                        isHolding = false;
+                    } else {
+                        // Short press = one tap
+                        const pressDuration = Date.now() - mouseDownTime;
+                        if (pressDuration < 150) {
+                            const now = Date.now();
+                            if (now - lastTapTime >= 333) {   // <- TAP COOLDOWN
+                                collectClicker(floor.number);
+                                lastTapTime = now;
+                            }
+                        }
+                    }
                 });
 
                 clickerButton.addEventListener('mouseleave', () => {
-                    clearInterval(clickerInterval);
-                    clickerInterval = null;
+                    clearTimeout(holdTimeout);
+                    if (clickerInterval) {
+                        clearInterval(clickerInterval);
+                        clickerInterval = null;
+                    }
+                    isHolding = false;
                 });
+
+
+
+
                 if (floor.dropper.level < 5) {
                     document.getElementById(`dropper-upgrade-${floor.number}`).addEventListener('click', () => upgradeDropper(floor.number));
                 }
