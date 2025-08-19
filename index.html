@@ -302,8 +302,24 @@
                 `;
                 floorsContainer.appendChild(floorDiv);
 
-                // Add event listeners
-                document.getElementById(`clicker-collect-${floor.number}`).addEventListener('click', () => collectClicker(floor.number));
+                // Add event listenerslet clickerInterval;
+                const clickerButton = document.getElementById(`clicker-collect-${floor.number}`);
+
+                clickerButton.addEventListener('mousedown', () => {
+                    if (!clickerInterval) {
+                        clickerInterval = setInterval(() => collectClicker(floor.number), 333); // 3x per second
+                    }
+                });
+
+                clickerButton.addEventListener('mouseup', () => {
+                    clearInterval(clickerInterval);
+                    clickerInterval = null;
+                });
+
+                clickerButton.addEventListener('mouseleave', () => {
+                    clearInterval(clickerInterval);
+                    clickerInterval = null;
+                });
                 if (floor.dropper.level < 5) {
                     document.getElementById(`dropper-upgrade-${floor.number}`).addEventListener('click', () => upgradeDropper(floor.number));
                 }
