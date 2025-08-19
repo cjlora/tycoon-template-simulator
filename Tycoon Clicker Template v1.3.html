@@ -1,0 +1,471 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐉🔥 Cedric's Dragon Chamber 🔥🐉</title>
+    <style>
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            margin: 0;
+            font-size: 20px;
+        }
+        h1 {
+            font-size: 42px;
+            font-weight: 700;
+            background: linear-gradient(45deg, #ff4500, #ffd700);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3), 0 0 10px #ff4500;
+            animation: dazzle 2s infinite;
+            margin: 10px 0;
+        }
+        @keyframes dazzle {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        button {
+            padding: 12px 24px;
+            margin: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+            font-family: 'Roboto', Arial, sans-serif;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #output {
+            margin-top: 20px;
+            font-size: 20px;
+            color: #333;
+        }
+        .currency-area {
+            margin: 20px 0;
+            font-size: 22px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+        .currency-area.fixed {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: #fff;
+            z-index: 1000;
+            padding: 10px 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .station-row {
+            margin: 20px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        .station-box {
+            padding: 15px;
+            width: 90%;
+            max-width: 400px;
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            border: 1px solid #ccc;
+            margin: 10px;
+        }
+        .station-box h2 {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+            color: #333;
+            font-weight: 700;
+        }
+        .station-box p {
+            margin: 5px 0;
+            font-size: 20px;
+            color: #555;
+        }
+        .station-box .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+        }
+        .playtime-timer {
+            margin: 10px 0;
+            font-size: 22px;
+            color: #333;
+        }
+        .level-display {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+            min-height: 30px;
+        }
+        .icon-emoji {
+            font-size: 20px;
+            animation: bounce 1s infinite;
+        }
+        .icon-emoji.sliding {
+            animation: slide 2s infinite;
+        }
+        .checkmark {
+            font-size: 30px;
+            color: #4CAF50;
+            margin-top: 10px;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        @keyframes slide {
+            0% { transform: translateX(0); }
+            33% { transform: translateX(50px); }
+            66% { transform: translateX(-50px); }
+            100% { transform: translateX(50px); }
+        }
+        .container-padded {
+            padding-top: 80px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background-color: #ddd;
+            border-radius: 5px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background-color: #4CAF50;
+            transition: width 0.1s linear;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐉🔥 Cedric's Dragon Chamber 🔥🐉</h1>
+        <div class="playtime-timer">
+            Playtime: <span id="playtime">0:00</span>
+        </div>
+        <div class="currency-area">
+            <p>Currency: <span id="currency">0</span></p>
+            <p>Uncollected: <span id="uncollected">0</span></p>
+            <button id="collect-all">Collect All</button>
+        </div>
+        <div id="floors"></div>
+        <div class="station-row">
+            <div class="station-box">
+                <button id="unlock-floor">+ Unlock Floor 2 Cost: <span id="next-cost">500</span></button>
+            </div>
+        </div>
+        <div id="output">Click a button to see the result!</div>
+    </div>
+    <script>
+        let currency = 0;
+        let uncollected = 0;
+        let playtime = 0;
+        let unlockedFloors = 1;
+        let nextFloorCost = 500;
+        let floors = [
+            {
+                number: 1,
+                clicker: { level: 1, income: 1, clicks: 0, clicksRequired: 20, dragons: 1 },
+                dropper: { level: 0, income: 0, dragons: 0, upgradeCost: 50 },
+                pickup: { level: 0, dragons: 0, cooldownEndTime: 0, buyCost: 50 }
+            }
+        ];
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+
+        function updateDisplays() {
+            const currencyEl = document.getElementById('currency');
+            const uncollectedEl = document.getElementById('uncollected');
+            const playtimeEl = document.getElementById('playtime');
+            const nextCostEl = document.getElementById('next-cost');
+            const unlockFloorEl = document.getElementById('unlock-floor');
+            if (currencyEl) currencyEl.textContent = currency;
+            if (uncollectedEl) uncollectedEl.textContent = uncollected;
+            if (playtimeEl) playtimeEl.textContent = formatTime(playtime);
+            if (nextCostEl) nextCostEl.textContent = nextFloorCost;
+            if (unlockFloorEl) unlockFloorEl.innerHTML = `+ Unlock Floor ${unlockedFloors + 1} Cost: <span id="next-cost">${nextFloorCost}</span>`;
+        }
+
+        function renderFloors() {
+            const floorsContainer = document.getElementById('floors');
+            floorsContainer.innerHTML = '';
+            floors.forEach(floor => {
+                const floorDiv = document.createElement('div');
+                floorDiv.className = 'station-row';
+                floorDiv.innerHTML = `
+                    <div class="station-box">
+                        <h2>Floor ${floor.number}</h2>
+                        <div class="station-box">
+                            <h3>Clicker ${floor.number}</h3>
+                            <div class="level-display">
+                                <p>Level: <span id="clicker-level-${floor.number}">${floor.clicker.level}</span></p>
+                                <p id="clicker-dragons-${floor.number}" class="icon-emoji">${'🐉'.repeat(floor.clicker.dragons)}</p>
+                            </div>
+                            <p>Income: <span id="clicker-income-${floor.number}">${floor.clicker.income}</span></p>
+                            <p>Clicks until next upgrade: <span id="clicker-clicks-${floor.number}">${floor.clicker.clicksRequired - floor.clicker.clicks}</span></p>
+                            <div class="button-group">
+                                <button id="clicker-collect-${floor.number}">Collect</button>
+                            </div>
+                        </div>
+                        <div class="station-box">
+                            <h3>Dropper ${floor.number}</h3>
+                            <div class="level-display">
+                                ${floor.dropper.level > 0 ? `<p id="dropper-icons-${floor.number}" class="icon-emoji">${'🐉💻'.repeat(floor.dropper.level)}</p>` : '<p>Not Activated</p>'}
+                            </div>
+                            <p>Income: <span id="dropper-income-${floor.number}">${floor.dropper.income}</span>/s</p>
+                            ${floor.dropper.level < 5 ? `<p>Upgrade Cost: <span id="dropper-upgrade-cost-${floor.number}">${floor.dropper.upgradeCost}</span></p>` : ''}
+                            <div class="button-group">
+                                ${floor.dropper.level < 5 ? `<button id="dropper-upgrade-${floor.number}">Upgrade</button>` : ''}
+                                ${floor.dropper.level > 0 ? `<button disabled>Generating: <span id="dropper-generating-${floor.number}">${floor.dropper.income}</span>/s</button>` : ''}
+                            </div>
+                        </div>
+                        <div class="station-box">
+                            <h3>Pick Up ${floor.number}</h3>
+                            <div class="level-display">
+                                ${floor.pickup.level > 0 ? `<p id="pickup-icons-${floor.number}" class="icon-emoji">${'🐉' + '📦'.repeat(floor.number)}</p>` : '<p>Not Activated</p>'}
+                            </div>
+                            ${floor.pickup.level > 0 ? `
+                                <div id="pickup-progress-${floor.number}" class="progress-bar ${floor.pickup.cooldownEndTime <= Date.now() ? 'hidden' : ''}">
+                                    <div id="pickup-progress-fill-${floor.number}" class="progress-bar-fill" style="width: 0%"></div>
+                                </div>
+                                <p id="pickup-checkmark-${floor.number}" class="checkmark ${floor.pickup.cooldownEndTime <= Date.now() ? '' : 'hidden'}">✅</p>
+                            ` : ''}
+                            <p>Reward: <span id="pickup-reward-${floor.number}">${floor.pickup.level > 0 ? 30 + 10 * floor.number : 0}</span></p>
+                            <p>Cooldown: <span id="pickup-cooldown-${floor.number}">${Math.max(1, 30 - 2 * floor.number)}</span>s</p>
+                            ${floor.pickup.level === 0 ? `<p>Buy Cost: ${floor.pickup.buyCost}</p>` : ''}
+                            <div class="button-group">
+                                ${floor.pickup.level === 0 ? `<button id="pickup-buy-${floor.number}">Buy</button>` : `<button id="pickup-collect-${floor.number}">Collect</button>`}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                floorsContainer.appendChild(floorDiv);
+
+                // Add event listeners
+                document.getElementById(`clicker-collect-${floor.number}`).addEventListener('click', () => collectClicker(floor.number));
+                if (floor.dropper.level < 5) {
+                    document.getElementById(`dropper-upgrade-${floor.number}`).addEventListener('click', () => upgradeDropper(floor.number));
+                }
+                if (floor.pickup.level === 0) {
+                    document.getElementById(`pickup-buy-${floor.number}`).addEventListener('click', () => buyPickup(floor.number));
+                } else {
+                    document.getElementById(`pickup-collect-${floor.number}`).addEventListener('click', () => collectPickup(floor.number));
+                }
+            });
+            updateDisplays();
+        }
+
+        function collectClicker(floorNum) {
+            const floor = floors.find(f => f.number === floorNum);
+            currency += floor.clicker.income;
+            floor.clicker.clicks++;
+            if (floor.clicker.clicks >= floor.clicker.clicksRequired) {
+                floor.clicker.level++;
+                floor.clicker.dragons++;
+                floor.clicker.income = floor.clicker.level;
+                floor.clicker.clicks = 0;
+                floor.clicker.clicksRequired = 20;
+                updateFloorDisplays(floorNum);
+            }
+            updateDisplays();
+        }
+
+        function upgradeDropper(floorNum) {
+            const floor = floors.find(f => f.number === floorNum);
+            if (currency >= floor.dropper.upgradeCost && floor.dropper.level < 5) {
+                currency -= floor.dropper.upgradeCost;
+                floor.dropper.level++;
+                floor.dropper.income = floor.number * floor.dropper.level;
+                floor.dropper.dragons = floor.dropper.level;
+                floor.dropper.upgradeCost = 50 * floor.dropper.level;
+                renderFloors();
+            }
+        }
+
+        function buyPickup(floorNum) {
+            const floor = floors.find(f => f.number === floorNum);
+            if (currency >= floor.pickup.buyCost) {
+                currency -= floor.pickup.buyCost;
+                floor.pickup.level = 1;
+                floor.pickup.dragons = 1;
+                floor.pickup.cooldownEndTime = Date.now();
+                renderFloors();
+            }
+        }
+
+        function collectPickup(floorNum) {
+            const floor = floors.find(f => f.number === floorNum);
+            const now = Date.now();
+            if (now >= floor.pickup.cooldownEndTime && floor.pickup.level > 0) {
+                const reward = 30 + 10 * floor.number;
+                currency += reward;
+                const cooldown = Math.max(1, 30 - 2 * floor.number);
+                floor.pickup.cooldownEndTime = now + cooldown * 1000;
+                renderFloors();
+            }
+        }
+
+        function updateFloorDisplays(floorNum) {
+            const floor = floors.find(f => f.number === floorNum);
+            const clickerLevel = document.getElementById(`clicker-level-${floorNum}`);
+            const clickerIncome = document.getElementById(`clicker-income-${floorNum}`);
+            const clickerClicks = document.getElementById(`clicker-clicks-${floorNum}`);
+            const dropperIncome = document.getElementById(`dropper-income-${floorNum}`);
+            const dropperGenerating = document.getElementById(`dropper-generating-${floorNum}`);
+            const dropperUpgradeCost = document.getElementById(`dropper-upgrade-cost-${floorNum}`);
+            const pickupReward = document.getElementById(`pickup-reward-${floorNum}`);
+            const pickupCooldown = document.getElementById(`pickup-cooldown-${floorNum}`);
+
+            if (clickerLevel) clickerLevel.textContent = floor.clicker.level;
+            if (clickerIncome) clickerIncome.textContent = floor.clicker.income;
+            if (clickerClicks) clickerClicks.textContent = floor.clicker.clicksRequired - floor.clicker.clicks;
+            if (dropperIncome) dropperIncome.textContent = floor.dropper.income;
+            if (dropperGenerating) dropperGenerating.textContent = floor.dropper.income;
+            if (dropperUpgradeCost) dropperUpgradeCost.textContent = floor.dropper.upgradeCost;
+            if (pickupReward) pickupReward.textContent = floor.pickup.level > 0 ? 30 + 10 * floor.number : 0;
+            if (pickupCooldown) pickupCooldown.textContent = Math.max(1, 30 - 2 * floor.number);
+
+            const clickerDragons = document.getElementById(`clicker-dragons-${floorNum}`);
+            const dropperIcons = document.getElementById(`dropper-icons-${floorNum}`);
+            const pickupIcons = document.getElementById(`pickup-icons-${floorNum}`);
+            if (clickerDragons) clickerDragons.innerHTML = '🐉'.repeat(floor.clicker.dragons);
+            if (dropperIcons && floor.dropper.level > 0) dropperIcons.innerHTML = '🐉💻'.repeat(floor.dropper.level);
+            if (pickupIcons && floor.pickup.level > 0) pickupIcons.innerHTML = '🐉' + '📦'.repeat(floor.number);
+
+            const now = Date.now();
+            const remaining = Math.max(0, floor.pickup.cooldownEndTime - now);
+            const cooldown = Math.max(1, 30 - 2 * floor.number) * 1000;
+            const progress = pickupIcons && floor.pickup.level > 0 ? (cooldown - remaining) / cooldown * 100 : 0;
+            const pickupProgress = document.getElementById(`pickup-progress-${floorNum}`);
+            const pickupProgressFill = document.getElementById(`pickup-progress-fill-${floorNum}`);
+            const pickupCheckmark = document.getElementById(`pickup-checkmark-${floorNum}`);
+            if (pickupProgressFill) pickupProgressFill.style.width = `${progress}%`;
+            if (pickupProgress && pickupCheckmark) {
+                pickupProgress.classList.toggle('hidden', remaining === 0);
+                pickupCheckmark.classList.toggle('hidden', remaining !== 0);
+            }
+        }
+
+        document.getElementById('collect-all').addEventListener('click', () => {
+            currency += uncollected;
+            uncollected = 0;
+            updateDisplays();
+        });
+
+        document.getElementById('unlock-floor').addEventListener('click', () => {
+            if (currency >= nextFloorCost) {
+                currency -= nextFloorCost;
+                unlockedFloors++;
+                floors.push({
+                    number: unlockedFloors,
+                    clicker: { level: 1, income: 1, clicks: 0, clicksRequired: 20, dragons: 1 },
+                    dropper: { level: 0, income: 0, dragons: 0, upgradeCost: 50 },
+                    pickup: { level: 0, dragons: 0, cooldownEndTime: 0, buyCost: 50 * Math.pow(10, unlockedFloors - 1) }
+                });
+                nextFloorCost *= 5;
+                renderFloors();
+            }
+        });
+
+        setInterval(() => {
+            playtime++;
+            const now = Date.now();
+            floors.forEach(floor => {
+                uncollected += floor.dropper.income;
+                const pickupButton = document.getElementById(`pickup-collect-${floor.number}`);
+                const pickupIcons = document.getElementById(`pickup-icons-${floor.number}`);
+                if (pickupButton && pickupIcons) {
+                    const remaining = Math.max(0, Math.ceil((floor.pickup.cooldownEndTime - now) / 1000));
+                    pickupButton.disabled = remaining > 0;
+                    pickupButton.textContent = remaining > 0 ? `Collect (in ${remaining}s)` : 'Collect';
+                    if (remaining > 0 && floor.pickup.level > 0) {
+                        pickupIcons.classList.add('sliding');
+                    } else {
+                        pickupIcons.classList.remove('sliding');
+                    }
+                }
+                updateFloorDisplays(floor.number);
+            });
+            updateDisplays();
+        }, 1000);
+
+        // Scroll-based fixed header
+        const currencyArea = document.querySelector('.currency-area');
+        const container = document.querySelector('.container');
+        const currencyAreaOffset = currencyArea.offsetTop;
+
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > currencyAreaOffset) {
+                currencyArea.classList.add('fixed');
+                container.classList.add('container-padded');
+            } else {
+                currencyArea.classList.remove('fixed');
+                container.classList.remove('container-padded');
+            }
+        });
+
+        renderFloors();
+    </script>
+</body>
+</html>
