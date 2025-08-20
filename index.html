@@ -287,6 +287,11 @@
             return 0;
         }
 
+        function getMaxLevel(type, floor) {
+            const entries = economyData.filter(e => e.type === type && e.floor === floor);
+            return entries.length > 0 ? Math.max(...entries.map(e => e.level)) : 0;
+        }
+
         function formatTime(seconds) {
             const mins = Math.floor(seconds / 60);
             const secs = seconds % 60;
@@ -348,9 +353,9 @@
                                 ${floor.dropper.level > 0 ? `<p id="dropper-icons-${floor.number}" class="icon-emoji">${'🐉💻'.repeat(floor.dropper.level)}</p>` : '<p>Not Activated</p>'}
                             </div>
                             <p>Income: <span id="dropper-income-${floor.number}">${floor.dropper.income}</span>/s</p>
-                            ${floor.dropper.level < 16 ? `<p>Upgrade Cost: <span id="dropper-upgrade-cost-${floor.number}">${floor.dropper.upgradeCost}</span></p>` : ''}
+                            ${floor.dropper.level < getMaxLevel('Dropper', floor.number) ? `<p>Upgrade Cost: <span id="dropper-upgrade-cost-${floor.number}">${floor.dropper.upgradeCost}</span></p>` : ''}
                             <div class="button-group">
-                                ${floor.dropper.level < 16 ? `<button id="dropper-upgrade-${floor.number}">Upgrade</button>` : ''}
+                                ${floor.dropper.level < getMaxLevel('Dropper', floor.number) ? `<button id="dropper-upgrade-${floor.number}">Upgrade</button>` : ''}
                                 ${floor.dropper.level > 0 ? `<button disabled>Generating: <span id="dropper-generating-${floor.number}">${floor.dropper.income}</span>/s</button>` : ''}
                             </div>
                         </div>
@@ -360,9 +365,9 @@
                                 ${floor.dropperV2.level > 0 ? `<p id="dropperV2-icons-${floor.number}" class="icon-emoji">${'🐉💻'.repeat(floor.dropperV2.level)}</p>` : '<p>Not Activated</p>'}
                             </div>
                             <p>Income: <span id="dropperV2-income-${floor.number}">${floor.dropperV2.income}</span>/s</p>
-                            ${floor.dropperV2.level < 24 ? `<p>Upgrade Cost: <span id="dropperV2-upgrade-cost-${floor.number}">${floor.dropperV2.upgradeCost}</span></p>` : ''}
+                            ${floor.dropperV2.level < getMaxLevel('DropperV2', floor.number) ? `<p>Upgrade Cost: <span id="dropperV2-upgrade-cost-${floor.number}">${floor.dropperV2.upgradeCost}</span></p>` : ''}
                             <div class="button-group">
-                                ${floor.dropperV2.level < 24 ? `<button id="dropperV2-upgrade-${floor.number}">Upgrade</button>` : ''}
+                                ${floor.dropperV2.level < getMaxLevel('DropperV2', floor.number) ? `<button id="dropperV2-upgrade-${floor.number}">Upgrade</button>` : ''}
                                 ${floor.dropperV2.level > 0 ? `<button disabled>Generating: <span id="dropperV2-generating-${floor.number}">${floor.dropperV2.income}</span>/s</button>` : ''}
                             </div>
                         </div>
@@ -437,10 +442,10 @@
                         isHolding = false;
                     });
                 }
-                if (floor.dropper.level < 16) {
+                if (floor.dropper.level < getMaxLevel('Dropper', floor.number)) {
                     document.getElementById(`dropper-upgrade-${floor.number}`).addEventListener('click', () => upgradeDropper(floor.number));
                 }
-                if (floor.dropperV2.level < 24) {
+                if (floor.dropperV2.level < getMaxLevel('DropperV2', floor.number)) {
                     document.getElementById(`dropperV2-upgrade-${floor.number}`).addEventListener('click', () => upgradeDropperV2(floor.number));
                 }
                 floor.pickups.forEach((pickup, index) => {
@@ -481,9 +486,10 @@
 
         function upgradeDropper(floorNum) {
             const floor = floors.find(f => f.number === floorNum);
+            const maxLevel = getMaxLevel('Dropper', floorNum);
             const nextLevel = floor.dropper.level + 1;
             const upgradeCost = getEconomyValue('Dropper', floorNum, nextLevel, 'upgradeCost');
-            if (currency >= upgradeCost && floor.dropper.level < 16) {
+            if (currency >= upgradeCost && floor.dropper.level < maxLevel) {
                 currency -= upgradeCost;
                 floor.dropper.level++;
                 floor.dropper.income = getEconomyValue('Dropper', floorNum, floor.dropper.level, 'reward');
@@ -495,9 +501,10 @@
 
         function upgradeDropperV2(floorNum) {
             const floor = floors.find(f => f.number === floorNum);
+            const maxLevel = getMaxLevel('DropperV2', floorNum);
             const nextLevel = floor.dropperV2.level + 1;
             const upgradeCost = getEconomyValue('DropperV2', floorNum, nextLevel, 'upgradeCost');
-            if (currency >= upgradeCost && floor.dropperV2.level < 24) {
+            if (currency >= upgradeCost && floor.dropperV2.level < maxLevel) {
                 currency -= upgradeCost;
                 floor.dropperV2.level++;
                 floor.dropperV2.income = getEconomyValue('DropperV2', floorNum, floor.dropperV2.level, 'reward');
