@@ -492,7 +492,7 @@
             if (currency >= upgradeCost && floor.dropper.level < maxLevel) {
                 currency -= upgradeCost;
                 floor.dropper.level++;
-                floor.dropper.income = getEconomyValue('Dropper', floorNum, floor.dropper.level, 'reward');
+                floor.dropper.income += getEconomyValue('Dropper', floorNum, floor.dropper.level, 'reward');
                 floor.dropper.dragons = floor.dropper.level;
                 floor.dropper.upgradeCost = getEconomyValue('Dropper', floorNum, floor.dropper.level + 1, 'upgradeCost') || 0;
                 renderFloors();
@@ -507,7 +507,7 @@
             if (currency >= upgradeCost && floor.dropperV2.level < maxLevel) {
                 currency -= upgradeCost;
                 floor.dropperV2.level++;
-                floor.dropperV2.income = getEconomyValue('DropperV2', floorNum, floor.dropperV2.level, 'reward');
+                floor.dropperV2.income += getEconomyValue('DropperV2', floorNum, floor.dropperV2.level, 'reward');
                 floor.dropperV2.dragons = floor.dropperV2.level;
                 floor.dropperV2.upgradeCost = getEconomyValue('DropperV2', floorNum, floor.dropperV2.level + 1, 'upgradeCost') || 0;
                 renderFloors();
