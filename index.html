@@ -248,7 +248,8 @@
                 floors = [
                     {
                         number: 1,
-                        clicker: { level: 1, income: 1, clicks: 0, clicksRequired: getEconomyValue('Clicker', 0, 0, 'clicksRequired'), dragons: 1 },
+                        clicker: economyData.some(e => e.type === 'Clicker' && e.floor === 1) ? 
+                            { level: 0, income: getEconomyValue('Clicker', 1, 0, 'income'), clicks: 0, clicksRequired: getEconomyValue('Clicker', 1, 0, 'clicksRequired'), buyCost: getEconomyValue('Clicker', 1, 0, 'buyCost'), dragons: 0 } : null,
                         dropper: { level: 0, income: 0, dragons: 0, upgradeCost: getEconomyValue('Dropper', 1, 1, 'upgradeCost') },
                         dropperV2: { level: 0, income: 0, dragons: 0, upgradeCost: getEconomyValue('DropperV2', 1, 1, 'upgradeCost') }
                     }
@@ -266,15 +267,13 @@
         }
 
         function getEconomyValue(type, floor, level, property) {
-            const entry = type === 'Clicker' ? 
-                economyData.find(e => e.type === type) : 
-                economyData.find(e => e.type === type && e.floor === floor && e.level === level);
+            const entry = economyData.find(e => e.type === type && e.floor === floor && e.level === level);
             return entry ? entry[property] : getDefaultValue(type, floor, level, property);
         }
 
         function getDefaultValue(type, floor, level, property) {
             if (type === 'Clicker') {
-                return property === 'clicksRequired' ? 20 : property === 'income' ? level : 0;
+                return property === 'clicksRequired' ? 20 : property === 'income' ? 1 : property === 'buyCost' ? 0 : 0;
             } else if (type === 'Dropper' || type === 'DropperV2') {
                 return property === 'upgradeCost' ? 50 * level : property === 'reward' ? floor * level : 0;
             } else if (type === 'PickUp') {
@@ -322,18 +321,19 @@
                     <div class="station-box">
                         <h2>Floor ${floor.number}</h2>
                 `;
-                if (floor.number % 2 !== 0) {
+                if (floor.clicker) {
                     floorHTML += `
                         <div class="station-box">
                             <h3>Clicker ${floor.number}</h3>
                             <div class="level-display">
-                                <p>Level: <span id="clicker-level-${floor.number}">${floor.clicker.level}</span></p>
-                                <p id="clicker-dragons-${floor.number}" class="icon-emoji">${'🐉'.repeat(floor.clicker.dragons)}</p>
+                                ${floor.clicker.level > 0 ? `<p>Level: <span id="clicker-level-${floor.number}">${floor.clicker.level}</span></p>
+                                <p id="clicker-dragons-${floor.number}" class="icon-emoji">${'🐉'.repeat(floor.clicker.dragons)}</p>` : '<p>Not Activated</p>'}
                             </div>
-                            <p>Income: <span id="clicker-income-${floor.number}">${floor.clicker.income * floor.number}</span></p>
-                            <p>Clicks until next upgrade: <span id="clicker-clicks-${floor.number}">${floor.clicker.clicksRequired - floor.clicker.clicks}</span></p>
+                            ${floor.clicker.level > 0 ? `<p>Income: <span id="clicker-income-${floor.number}">${floor.clicker.income * floor.clicker.level * floor.number}</span></p>
+                            <p>Clicks until next upgrade: <span id="clicker-clicks-${floor.number}">${floor.clicker.clicksRequired - floor.clicker.clicks}</span></p>` : ''}
+                            ${floor.clicker.level === 0 ? `<p>Buy Cost: ${floor.clicker.buyCost}</p>` : ''}
                             <div class="button-group">
-                                <button id="clicker-collect-${floor.number}">Collect</button>
+                                ${floor.clicker.level === 0 ? `<button id="clicker-buy-${floor.number}">Buy</button>` : `<button id="clicker-collect-${floor.number}">Collect</button>`}
                             </div>
                         </div>
                     `;
@@ -392,7 +392,9 @@
                 floorsContainer.appendChild(floorDiv);
 
                 // Add event listeners
-                if (floor.number % 2 !== 0) {
+                if (floor.clicker && floor.clicker.level === 0) {
+                    document.getElementById(`clicker-buy-${floor.number}`).addEventListener('click', () => buyClicker(floor.number));
+                } else if (floor.clicker) {
                     const clickerButton = document.getElementById(`clicker-collect-${floor.number}`);
                     let clickerInterval;
                     let holdTimeout;
@@ -447,14 +449,25 @@
             updateDisplays();
         }
 
+        function buyClicker(floorNum) {
+            const floor = floors.find(f => f.number === floorNum);
+            const buyCost = getEconomyValue('Clicker', floorNum, 0, 'buyCost');
+            if (currency >= buyCost) {
+                currency -= buyCost;
+                floor.clicker.level = 1;
+                floor.clicker.dragons = 1;
+                floor.clicker.income = getEconomyValue('Clicker', floorNum, 0, 'income');
+                renderFloors();
+            }
+        }
+
         function collectClicker(floorNum) {
             const floor = floors.find(f => f.number === floorNum);
-            currency += floor.clicker.income * floor.number; // Multiply income by floor number
+            currency += floor.clicker.income * floor.clicker.level * floor.number; // Income * level * floor
             floor.clicker.clicks++;
             if (floor.clicker.clicks >= floor.clicker.clicksRequired) {
                 floor.clicker.level++;
                 floor.clicker.dragons++;
-                floor.clicker.income = floor.clicker.level; // Income = level
                 floor.clicker.clicks = 0;
                 updateFloorDisplays(floorNum);
             }
@@ -469,7 +482,7 @@
             if (currency >= upgradeCost && floor.dropper.level < maxLevel) {
                 currency -= upgradeCost;
                 floor.dropper.level++;
-                floor.dropper.income += getEconomyValue('Dropper', floorNum, floor.dropper.level, 'reward');
+                floor.dropper.income = getEconomyValue('Dropper', floorNum, floor.dropper.level, 'reward');
                 floor.dropper.dragons = floor.dropper.level;
                 floor.dropper.upgradeCost = getEconomyValue('Dropper', floorNum, floor.dropper.level + 1, 'upgradeCost') || 0;
                 renderFloors();
@@ -484,7 +497,7 @@
             if (currency >= upgradeCost && floor.dropperV2.level < maxLevel) {
                 currency -= upgradeCost;
                 floor.dropperV2.level++;
-                floor.dropperV2.income += getEconomyValue('DropperV2', floorNum, floor.dropperV2.level, 'reward');
+                floor.dropperV2.income = getEconomyValue('DropperV2', floorNum, floor.dropperV2.level, 'reward');
                 floor.dropperV2.dragons = floor.dropperV2.level;
                 floor.dropperV2.upgradeCost = getEconomyValue('DropperV2', floorNum, floor.dropperV2.level + 1, 'upgradeCost') || 0;
                 renderFloors();
@@ -530,8 +543,8 @@
             const pickupCooldown = document.getElementById(`pickup-cooldown-${floorNum}`);
 
             if (clickerLevel) clickerLevel.textContent = floor.clicker.level;
-            if (clickerIncome) clickerIncome.textContent = floor.clicker.income * floor.number;
-            if (clickerClicks) clickerClicks.textContent = floor.clicker.clicksRequired - floor.clicker.clicks;
+            if (clickerIncome) clickerIncome.textContent = floor.clicker ? (floor.clicker.level > 0 ? floor.clicker.income * floor.clicker.level * floor.number : 0) : 0;
+            if (clickerClicks) clickerClicks.textContent = floor.clicker ? (floor.clicker.clicksRequired - floor.clicker.clicks) : 0;
             if (dropperIncome) dropperIncome.textContent = floor.dropper.income;
             if (dropperGenerating) dropperGenerating.textContent = floor.dropper.income;
             if (dropperUpgradeCost) dropperUpgradeCost.textContent = floor.dropper.upgradeCost;
@@ -545,7 +558,7 @@
             const dropperIcons = document.getElementById(`dropper-icons-${floorNum}`);
             const dropperV2Icons = document.getElementById(`dropperV2-icons-${floorNum}`);
             const pickupIcons = document.getElementById(`pickup-icons-${floorNum}`);
-            if (clickerDragons) clickerDragons.innerHTML = '🐉'.repeat(floor.clicker.dragons);
+            if (clickerDragons && floor.clicker && floor.clicker.level > 0) clickerDragons.innerHTML = '🐉'.repeat(floor.clicker.dragons);
             if (dropperIcons && floor.dropper.level > 0) dropperIcons.innerHTML = '🐉💻'.repeat(floor.dropper.level);
             if (dropperV2Icons && floor.dropperV2.level > 0) dropperV2Icons.innerHTML = '🐉💻'.repeat(floor.dropperV2.level);
             if (pickupIcons && floor.pickup && floor.pickup.level > 0) pickupIcons.innerHTML = '🐉' + '📦'.repeat(floor.number);
@@ -581,8 +594,8 @@
                     dropper: { level: 0, income: 0, dragons: 0, upgradeCost: getEconomyValue('Dropper', unlockedFloors, 1, 'upgradeCost') },
                     dropperV2: { level: 0, income: 0, dragons: 0, upgradeCost: getEconomyValue('DropperV2', unlockedFloors, 1, 'upgradeCost') }
                 };
-                if (unlockedFloors % 2 !== 0) {
-                    newFloor.clicker = { level: 1, income: 1, clicks: 0, clicksRequired: getEconomyValue('Clicker', 0, 0, 'clicksRequired'), dragons: 1 };
+                if (economyData.some(e => e.type === 'Clicker' && e.floor === unlockedFloors)) {
+                    newFloor.clicker = { level: 0, income: getEconomyValue('Clicker', unlockedFloors, 0, 'income'), clicks: 0, clicksRequired: getEconomyValue('Clicker', unlockedFloors, 0, 'clicksRequired'), buyCost: getEconomyValue('Clicker', unlockedFloors, 0, 'buyCost'), dragons: 0 };
                 }
                 if (economyData.some(e => e.type === 'PickUp' && e.floor === unlockedFloors)) {
                     newFloor.pickup = { level: 0, dragons: 0, cooldownEndTime: 0, buyCost: getEconomyValue('PickUp', unlockedFloors, 0, 'buyCost') };
