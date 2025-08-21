@@ -84,6 +84,12 @@
             background-color: #cccccc;
             cursor: not-allowed;
         }
+        #cheat-button {
+            background-color: #ff4444;
+        }
+        #cheat-button:hover {
+            background-color: #cc0000;
+        }
         #output {
             margin-top: 20px;
             font-size: 20px;
@@ -204,6 +210,7 @@
             <p>Currency: <span id="currency">0</span></p>
             <p>Uncollected: <span id="uncollected">0</span></p>
             <button id="collect-all">Collect All</button>
+            <button id="cheat-button">Cheat</button>
         </div>
         <div id="floors"></div>
         <div class="station-row">
@@ -280,7 +287,7 @@
             } else if (type === 'Dropper' || type === 'DropperV2') {
                 return property === 'upgradeCost' ? 50 * level : property === 'reward' ? floor * level : 0;
             } else if (type.startsWith('PickUp V')) {
-                return property === 'buyCost' ? 50 * Math.pow(10, floor - 1) : property === 'reward' ? (level > 0 ? 30 + 10 * floor : 0) : property === 'cooldown' ? Math.max(1, 30 - 2 * floor) : 0;
+                return property === 'buyCost' ? 50 * Math.pow(10, floor - 1) : property === 'reward' ? (level > 0 ? 2 : 0) : property === 'cooldown' ? Math.max(1, 30 - 2 * floor) : 0;
             } else if (type === 'Floor') {
                 return property === 'buyCost' ? 500 * Math.pow(5, floor - 2) : 0;
             }
@@ -290,6 +297,10 @@
         function getMaxLevel(type, floor) {
             const entries = economyData.filter(e => e.type === type && e.floor === floor);
             return entries.length > 0 ? Math.max(...entries.map(e => e.level)) : 0;
+        }
+
+        function getTotalDropperIncome() {
+            return floors.reduce((total, floor) => total + floor.dropper.income + floor.dropperV2.income, 0);
         }
 
         function formatTime(seconds) {
@@ -374,6 +385,7 @@
                 `;
                 // Render pickups
                 floor.pickups.forEach((pickup, index) => {
+                    const totalDropperIncome = getTotalDropperIncome();
                     floorHTML += `
                         <div class="station-box">
                             <h3>${pickup.type}</h3>
@@ -386,7 +398,7 @@
                                 </div>
                                 <p id="pickup${index + 1}-checkmark-${floor.number}" class="checkmark ${pickup.cooldownEndTime <= Date.now() ? '' : 'hidden'}">✅</p>
                             ` : ''}
-                            <p>Reward: <span id="pickup${index + 1}-reward-${floor.number}">${pickup.level > 0 ? getEconomyValue(pickup.type, floor.number, 1, 'reward') : 0}</span></p>
+                            <p>Reward: <span id="pickup${index + 1}-reward-${floor.number}">${pickup.level > 0 ? (getEconomyValue(pickup.type, floor.number, 1, 'reward') * totalDropperIncome) : 0}</span></p>
                             <p>Cooldown: <span id="pickup${index + 1}-cooldown-${floor.number}">${Math.max(1, getEconomyValue(pickup.type, floor.number, pickup.level, 'cooldown'))}</span>s</p>
                             ${pickup.level === 0 ? `<p>Buy Cost: ${pickup.buyCost}</p>` : ''}
                             <div class="button-group">
@@ -532,12 +544,22 @@
             const pickup = floor.pickups[pickupIndex];
             const now = Date.now();
             if (now >= pickup.cooldownEndTime && pickup.level > 0) {
-                const reward = getEconomyValue(pickup.type, floorNum, 1, 'reward');
-                currency += reward;
+                const multiplier = getEconomyValue(pickup.type, floorNum, 1, 'reward');
+                const totalDropperIncome = getTotalDropperIncome();
+                currency += multiplier * totalDropperIncome;
                 const cooldown = Math.max(1, getEconomyValue(pickup.type, floorNum, 1, 'cooldown'));
                 pickup.cooldownEndTime = now + cooldown * 1000;
                 renderFloors();
             }
+        }
+
+        function cheat() {
+            currency += 10000;
+            updateDisplays();
+        }
+
+        function getTotalDropperIncome() {
+            return floors.reduce((total, floor) => total + floor.dropper.income + floor.dropperV2.income, 0);
         }
 
         function updateFloorDisplays(floorNum) {
@@ -573,7 +595,8 @@
                 const pickupReward = document.getElementById(`pickup${index + 1}-reward-${floorNum}`);
                 const pickupCooldown = document.getElementById(`pickup${index + 1}-cooldown-${floorNum}`);
                 const pickupIcons = document.getElementById(`pickup${index + 1}-icons-${floorNum}`);
-                if (pickupReward) pickupReward.textContent = pickup.level > 0 ? getEconomyValue(pickup.type, floorNum, 1, 'reward') : 0;
+                const totalDropperIncome = getTotalDropperIncome();
+                if (pickupReward) pickupReward.textContent = pickup.level > 0 ? (getEconomyValue(pickup.type, floorNum, 1, 'reward') * totalDropperIncome) : 0;
                 if (pickupCooldown) pickupCooldown.textContent = Math.max(1, getEconomyValue(pickup.type, floorNum, pickup.level, 'cooldown'));
                 if (pickupIcons && pickup.level > 0) pickupIcons.innerHTML = '🐉' + '📦'.repeat(floor.number);
 
@@ -600,6 +623,10 @@
             updateDisplays();
         });
 
+        document.getElementById('cheat-button').addEventListener('click', () => {
+            cheat();
+        });
+
         document.getElementById('unlock-floor').addEventListener('click', () => {
             if (currency >= nextFloorCost && unlockedFloors < maxFloors) {
                 currency -= nextFloorCost;
@@ -611,7 +638,7 @@
                     pickups: []
                 };
                 if (economyData.some(e => e.type === 'Clicker' && e.floor === unlockedFloors)) {
-                    newFloor.clicker = { level: 0, income: getEconomyValue('Clicker', unlockedFloors, 0, 'income'), clicks: 0, clicksRequired: getEconomyValue('Clicker', unlockedFloors, 0, 'clicksRequired'), buyCost: getEconomyValue('Clicker', unlockedFloors, 0, 'buyCost'), dragons: 0 };
+                    newFloor.clicker = { level: 0, income: getEconomyValue('Clicker', unlockedFloors, 0, 'income'), clicks: 0, clicksRequired: getEconomyValue('Clicker', unfoldedFloors, 0, 'clicksRequired'), buyCost: getEconomyValue('Clicker', unlockedFloors, 0, 'buyCost'), dragons: 0 };
                 }
                 ['PickUp V1 ' + unlockedFloors, 'PickUp V2 ' + unlockedFloors, 'PickUp V3 ' + unlockedFloors, 'PickUp V4 ' + unlockedFloors].forEach(pickupType => {
                     if (economyData.some(e => e.type === pickupType && e.floor === unlockedFloors)) {
